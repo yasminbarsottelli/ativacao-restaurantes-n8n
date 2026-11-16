@@ -2,7 +2,7 @@
 
 Fluxo automatizado que recebe o cadastro de um restaurante, valida dados cadastrais e cardápio, consulta o CNPJ na Receita Federal e decide, por regra, se o cadastro é aprovado, se precisa de ajustes ou se vai para revisão humana. O restaurante e o time de ativação são avisados por e-mail conforme o resultado.
 
-Projeto demonstrativo, construído por Yasmin Barsottelli como estudo de caso de ativação de parceiros em plataformas de delivery.
+Projeto protótipo, construído por Yasmin Barsottelli como estudo de caso de ativação de parceiros em plataformas de delivery.
 
 > **Status:** fluxo funcional de ponta a ponta, com formulário público, consulta real de CNPJ e IA. Bateria de 25 casos (20 fictícios e 5 restaurantes reais): 25 de 25 com o resultado esperado.
 
