@@ -1,6 +1,6 @@
 # Ativação de Restaurantes com n8n + IA
 
-Fluxo automatizado que recebe o cadastro de um restaurante, valida dados cadastrais e cardápio, consulta o CNPJ na Receita Federal e decide, por regra, se o cadastro é aprovado, se precisa de ajustes ou se vai para revisão humana. O restaurante e o time de ativação são avisados por e-mail conforme o resultado.
+Fluxo automatizado que recebe o cadastro de um restaurante, valida dados cadastrais e cardápio, consulta o CNPJ e CNAI na Receita Federal e decide, por regra, se o cadastro é aprovado, se precisa de ajustes ou se vai para revisão humana. O restaurante e o time de ativação são avisados por e-mail conforme o resultado.
 
 Projeto protótipo, construído por Yasmin Barsottelli como estudo de caso de ativação de parceiros em plataformas de delivery.
 
@@ -10,11 +10,11 @@ Projeto protótipo, construído por Yasmin Barsottelli como estudo de caso de at
 
 ## O problema
 
-Na ativação de um restaurante, o time precisa conferir dados cadastrais, a situação do CNPJ, a atividade econômica e a qualidade do cardápio (descrições, preços, alergênicos, itens permitidos). Feito à mão, isso é lento, sujeito a erro e difícil de auditar. Feito só com IA, fica imprevisível e difícil de explicar.
+Na ativação de um restaurante, o time precisava conferir os dados cadastrais, a situação do CNPJ, a atividade econômica e a qualidade do cardápio (descrições, preços, alergênicos, itens permitidos). Fazendo manualmente, a atividade era lenta e difícil de auditar. Apenas com IA, ocorriam inconsistências nas validações.
 
 ## A solução: validação em camadas
 
-O fluxo separa o que é **regra** do que exige **interpretação**:
+Separei no fluxo que é **regra** do que exige **interpretação**:
 
 | Camada | O que verifica | Como |
 |---|---|---|
@@ -25,7 +25,7 @@ O fluxo separa o que é **regra** do que exige **interpretação**:
 | 5. Cardápio por IA | Preço fora da realidade, item proibido, item fora do ramo, legibilidade | Gemini (lista fechada de problemas, saída em JSON) |
 | 6. Decisão | Cor do semáforo e status | Regra em código, nunca a IA |
 
-A IA **aponta**; quem **decide** é a regra. Cada Verde, Amarelo ou Vermelho tem um motivo escrito e rastreável na planilha.
+A IA **aponta** a inconsistência que é verificada na camada da regra. Cada Verde, Amarelo ou Vermelho tem um motivo escrito e rastreável na planilha.
 
 ## Fluxo
 
@@ -42,7 +42,7 @@ Formulário interno (testes) ┴→ Regras de cadastro → Consultar Receita (ba
 
 ![Fluxo no n8n](fluxo-n8n.png)
 
-Dois gatilhos alimentam o mesmo fluxo. O **Google Forms** é a porta do restaurante, com validação na entrada. O **formulário interno do n8n** é a porta de testes: ele não tem as validações de formato, o que permite testar se a segunda camada (as regras do fluxo) pega sozinha os erros que a primeira barraria.
+Dois gatilhos alimentam o mesmo fluxo. O **Google Forms** é a porta do restaurante, com validação na entrada. O **formulário interno do n8n** foi utilizado para testes e não tem as validações de formato, o que permite testar se a segunda camada (as regras do fluxo) pega sozinha os erros que a primeira barraria.
 
 ## Regras de negócio
 
@@ -58,12 +58,12 @@ Dois gatilhos alimentam o mesmo fluxo. O **Google Forms** é a porta do restaura
 - **IA com escopo fechado.** O modelo só pode apontar problemas de uma lista fixa de códigos e devolve JSON. Categorias livres tornariam impossível transformar a análise em regra.
 - **Alergênicos por Regex, não por IA.** Nos primeiros testes, o modelo presumia ingredientes que não estavam escritos (ex.: "nhoque geralmente leva lácteos"), mesmo com o prompt proibindo. A verificação de alergênicos passou para um dicionário de Regex, determinístico e auditável, com exceções tratadas (ex.: "pão de queijo" não indica glúten; "farinha de mandioca" não é trigo). A IA ficou só com o que exige interpretação.
 - **Consulta à Receita em duas camadas.** O CNPJ é procurado primeiro numa base simulada, que controla os cenários de teste (CNPJ baixado, CNAE fora do ramo, razão social divergente). Se não estiver nela, o fluxo consulta a **BrasilAPI**, com dados reais da Receita. A comparação de razão social ignora maiúsculas, pontuação e sufixos societários (LTDA, ME, EPP, EIRELI, S/A). Se a API estiver fora do ar, o cadastro vai para revisão humana em vez de ser tratado como "CNPJ não encontrado".
-- **Idempotência no reenvio.** Cada envio tem um identificador (carimbo do Google Forms ou horário do formulário interno). Só conta como reenvio do restaurante um envio com identificador diferente do anterior. Isso foi corrigido depois de um teste: ao reprocessar uma execução que tinha falhado no envio do e-mail, o fluxo interpretou o reprocessamento como "restaurante reenviou o mesmo cardápio" e aprovou com ciência um restaurante que nunca tinha sido avisado.
-- **Temperatura 0.** A tarefa é classificação, não criação. Consistência é necessária para medir acurácia.
+- **Idempotência no reenvio.** Cada envio tem um identificador (carimbo do Google Forms ou horário do formulário interno). Só conta como reenvio do restaurante um envio com identificador diferente do anterior. Isso foi corrigido depois de um teste que ao reprocessar uma execução que tinha falhado no envio do e-mail, o fluxo interpretou o reprocessamento como "restaurante reenviou o mesmo cardápio" e aprovou com ciência um restaurante que nunca tinha sido avisado.
+- **Temperatura 0.** A tarefa é classificação, precisando da consistência para medir a acurácia.
 - **Escolha do modelo por cota e custo.** No plano gratuito da API Gemini, os modelos Flash Lite permitem 500 requisições/dia, contra 20/dia dos Flash maiores, o que inviabilizaria rodar a bateria de testes mais de uma vez. O fluxo usa o Gemini 3.1 Flash Lite; o 3.5 Flash Lite apresentou indisponibilidade por alta demanda no período de testes.
-- **Resiliência.** O nó de IA tenta até 5 vezes. Se ainda assim falhar, o cadastro não se perde: segue para revisão humana com o motivo registrado.
-- **Privacidade desde o desenho.** Só o cardápio é enviado à IA. CNPJ, e-mail e telefone nunca saem do fluxo.
-- **Injeção de prompt.** Um restaurante poderia escrever no cardápio instruções para a IA. O risco é contido porque a IA não decide nada: no pior caso, deixa de apontar um problema, e as camadas de regra continuam valendo.
+- **Resiliência.** O nó de IA tenta até 5 vezes. Se ainda assim falhar, o cadastro não se perde. Seguirá para revisão humana com o motivo registrado.
+- **Privacidade desde o desenho.** Só o cardápio é enviado à IA. CNPJ, e-mail e telefone não extravasam do fluxo.
+- **Injeção de prompt.** Um restaurante poderia escrever no cardápio instruções para a IA. O risco é contido porque a IA não decide nada, considerando a camada de regras.
 
 ## Testes e resultados
 
@@ -82,7 +82,7 @@ Bateria de **25 casos**, cada um com resultado esperado definido antes da execu�
 | Formigueiro Brasa e Fogão | 22.985.492/0001-54 | Ativa · Restaurantes e similares | Sem problemas ("farinha de mandioca" como armadilha) | Verde |
 | Padaria Flor do Valqueire | 33.562.570/0001-24 | Ativa · Padaria e confeitaria | Preço errado de propósito | Amarelo |
 
-Os e-mails de teste usam endereços do tipo `usuario+restNN@gmail.com`, que chegam a uma única caixa: nenhum e-mail foi enviado a terceiros.
+Os e-mails de teste usam endereços do tipo `usuario+restNN@gmail.com`, que chegam a uma única caixa, apenas para fins de teste.
 
 ### Resultado da bateria final (16/11/2026)
 
@@ -96,7 +96,7 @@ Os e-mails de teste usam endereços do tipo `usuario+restNN@gmail.com`, que cheg
 
 Além da cor, o motivo registrado bateu com o motivo esperado em todos os casos, incluindo os que tinham mais de um problema (ex.: preço incoerente e três alergênicos não declarados no mesmo item; CNAE de informática e item não alimentício no mesmo cadastro).
 
-**Como ler esse número com honestidade:** a massa de testes é pequena e foi escrita pela mesma pessoa que desenhou as regras, e as regras foram ajustadas ao longo do desenvolvimento. O resultado mostra que as regras fazem o que foram desenhadas para fazer; não é uma estimativa de acurácia em produção. Para isso, seria preciso rodar o fluxo sobre cadastros reais e revisar uma amostra.
+**Como ler esse número:** a massa de testes é pequena e foi escrita pela mesma pessoa que desenhou as regras, e as regras foram ajustadas ao longo do desenvolvimento. O resultado mostra que as regras fazem o que foram desenhadas para fazer, não sendo uma estimativa de acurácia em produção. Para isso, seria preciso rodar o fluxo sobre cadastros reais e revisar uma amostra.
 
 ![Cadastros aprovados (Verde)](resultados-verdes.png)
 
