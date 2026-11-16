@@ -1,0 +1,57 @@
+﻿CNPJ,Razão social,Nome fantasia,Telefone,Cidade/UF,Cardápio,Resultado esperado,Motivo esperado,Cenário
+52.601.815/0001-20,Cantina da Nona Alimentos Ltda,Cantina da Nona,(21) 99876-5432,Rio de Janeiro/RJ,"Lasanha à bolonhesa | massa fresca, molho de tomate, carne moída, queijo muçarela | 42,90 | glúten, lactose, ovo
+Nhoque ao sugo | nhoque de batata com molho de tomate e manjericão | 36,00 | glúten
+Tiramisù | biscoito champagne, café, mascarpone e cacau | 22,00 | glúten, lactose, ovo",Verde,,Cadastro completo e coerente
+90.830.166/0001-28,Sabor de Minas Comida Caseira Ltda,Sabor de Minas,(21) 99876-5432,Rio de Janeiro/RJ,"Prato feito de frango | arroz, feijão, frango grelhado, farofa e salada | 29,90 | nenhum
+Tutu à mineira | feijão com farinha de mandioca, linguiça, couve e ovo | 34,50 | ovo
+Pão de queijo (6 un.) | polvilho, queijo minas e leite | 14,00 | lactose, ovo",Verde,,"Armadilhas: ""pão de queijo"" e ""farinha de mandioca"" não indicam glúten"
+13.186.091/0001-43,Porto Burger Lanchonete Ltda,Burger do Porto,(21) 99876-5432,Niterói/RJ,"Smash clássico | pão brioche, blend 90g, queijo cheddar, picles | 32,00 | glúten, lactose, ovo
+Batata frita média | batata palito com sal | 16,00 | nenhum
+Milkshake de chocolate | sorvete de creme, leite e calda de chocolate | 21,00 | lactose",Verde,,Cadastro completo e coerente
+39.099.603/0001-28,Temaki Barra Culinária Japonesa Ltda,Temaki Barra,(21) 99876-5432,Rio de Janeiro/RJ,"Temaki de salmão | alga nori, arroz, salmão e cebolinha | 31,90 | peixe
+Hot roll (10 un.) | salmão, cream cheese, empanado e frito | 38,00 | peixe, lactose, glúten
+Edamame | soja cozida com sal grosso | 18,00 | soja",Verde,,Cadastro completo e coerente
+08.246.281/0001-79,Verde Vivo Alimentação Saudável Ltda,Verde Vivo,(21) 3456-7890,Rio de Janeiro/RJ,"Bowl de quinoa | quinoa, grão-de-bico, legumes assados e molho de tahine | 37,00 | gergelim
+Suco verde 500ml | couve, limão, gengibre e maçã | 14,00 | nenhum
+Wrap de falafel | tortilha integral, falafel, homus e salada | 29,00 | glúten, gergelim",Verde,,Telefone fixo válido
+94.821.993/0001-06,Bella Vista Pizzaria Ltda,Pizzaria Bella Vista,(21) 99876-5432,Duque de Caxias/RJ,"Pizza margherita grande | molho de tomate, muçarela, tomate e manjericão | 59,90 | glúten, lactose
+Pizza calabresa grande | molho de tomate, muçarela, calabresa e cebola | 62,90 | glúten, lactose
+Refrigerante lata 350ml | refrigerante sabor cola | 7,00 | nenhum",Verde,,Cadastro completo e coerente
+51.819.093/0001-11,Açaí Point Recreio Ltda,Açaí Point Recreio,(21) 99876-5432,Rio de Janeiro/RJ,"Açaí 500ml | açaí batido com banana e granola | 24,00 | glúten
+Açaí 300ml | açaí batido com banana | 17,00 | nenhum
+Adicional de leite em pó | porção extra de leite em pó | 3,00 | lactose",Verde,,Cadastro completo e coerente
+78.657.975/0001-84,Xis do Gordo Lanches Ltda,Xis do Gordo,(21) 99876-5432,Rio de Janeiro/RJ,"X-Tudo | pão, hambúrguer, queijo, presunto, ovo e bacon | 2,50 | nenhum
+X-Salada | pão, hambúrguer, queijo, alface e tomate | 24,00 | glúten, lactose
+Refrigerante 600ml | refrigerante sabor guaraná | 9,00 | nenhum",Amarelo,Preço incoerente e alergênicos não declarados no X-Tudo,Erro de preço e alergênico em um item
+43.231.948/0001-60,Cozinha da Vó Lia Ltda,Cozinha da Vó Lia,(21) 99876-5432,Rio de Janeiro/RJ,"Feijoada completa | | 45,00 | 
+Escondidinho de carne seca | purê de aipim, carne seca desfiada e queijo coalho gratinado | 38,00 | lactose
+Pudim de leite | | 12,00 | ",Amarelo,Itens sem descrição e sem alergênicos informados,Descrições vazias
+75.749.118/0001-16,Pastelaria Feliz Ltda,Pastelaria Feliz,(21) 99876-5432,Rio de Janeiro/RJ,"Pastel de queijo | massa frita recheada com queijo muçarela | 9,00 | nenhum
+Pastel de carne | massa frita recheada com carne moída temperada | 9,50 | nenhum
+Caldo de cana 300ml | caldo de cana com limão | 8,00 | nenhum",Amarelo,Alergênicos não declarados (massa indica glúten; queijo indica lactose),Alergênico negado em vários itens
+62.527.601/0001-04,Marmitaria Boa Mesa Ltda,Marmitaria Boa Mesa,(21) 9988-77,Rio de Janeiro/RJ,"Marmita de carne assada | arroz, feijão, carne assada e legumes | 27,00 | nenhum
+Marmita de peixe | arroz, purê e filé de tilápia grelhado | 29,00 | peixe, lactose
+Suco natural 300ml | laranja | 8,00 | nenhum",Amarelo,Telefone inválido,Telefone com dígitos faltando
+89.555.979/0001-78,Ana Clara Doces Finos Ltda,Doceria Ana Clara,(21) 99876-5432,Rio de Janeiro/RJ,"Bolo de pote de ninho | massa de baunilha, creme de leite ninho | 16,00 | glúten, lactose, ovo
+Brigadeiro gourmet (unidade) | chocolate belga | 450,00 | lactose
+Torta de limão (fatia) | massa amanteigada, creme de limão e merengue | 15,00 | glúten, lactose, ovo",Amarelo,Preço incoerente no brigadeiro,Preço muito alto por erro de digitação
+71.147.104/0001-71,Espetinho do Zé Ltda,Espetinho do Zé,(21) 99876-5432,Rio de Janeiro/RJ,"Espeto de carne | | 12,00 | nenhum
+Espeto de frango com bacon | | 12,00 | nenhum
+Pão de alho | pão francês com pasta de alho e queijo | 8,00 | glúten, lactose",Amarelo,Itens sem descrição,Descrição ausente
+68.599.528/0001-63,Tapiocaria Nordeste Ltda,Tapiocaria Nordeste,(21) 99876-5432,Rio de Janeiro/RJ,"Tapioca de carne de sol com queijo coalho | goma de tapioca, carne de sol e queijo coalho | 22,00 | lactose
+Cuscuz recheado | flocão de milho, ovo, queijo e manteiga | 18,00 | nenhum
+Café coado | café passado na hora | 5,00 | nenhum",Amarelo,CNPJ com dígito verificador inválido; alergênico não declarado no cuscuz,CNPJ com erro de digitação
+97.465.075/0001-80,Point do Sabor Ltda,Point do Sabor,(21) 99876-5432,Rio de Janeiro/RJ,"Hambúrguer artesanal | pão, carne 150g, queijo e molho da casa | 30,00 | glúten, lactose
+Batata rústica | batata com alecrim | 15,00 | nenhum",Vermelho,CNPJ baixado na Receita,CNPJ com situação BAIXADA
+29.170.342/0001-31,TechStore Informática Ltda,Tech Lanches,(21) 99876-5432,Rio de Janeiro/RJ,"Combo lanche | sanduíche natural e suco | 25,00 | glúten
+Cabo USB-C 1m | cabo de carregamento | 35,00 | nenhum",Vermelho,Atividade não é de alimentação; item fora do ramo,CNAE de informática e item não alimentício
+36.671.276/0001-49,Boteco Vinte e Quatro Horas Ltda,Boteco 24h,(21) 99876-5432,Rio de Janeiro/RJ,"Porção de calabresa | calabresa acebolada | 32,00 | nenhum
+Cerveja lata 350ml | cerveja pilsen | 8,00 | glúten
+Cigarro avulso | unidade | 1,50 | nenhum",Vermelho,Item proibido (cigarro),Venda de cigarro
+84.268.465/0001-18,Fantasma Comércio de Alimentos Ltda,Restaurante Fantasma,(21) 99876-5432,Rio de Janeiro/RJ,"Prato executivo | arroz, feijão, bife e fritas | 28,00 | nenhum
+Salada da casa | folhas, tomate e cenoura | 18,00 | nenhum",Vermelho,CNPJ não encontrado na Receita,"CNPJ válido no formato, mas inexistente"
+63.212.233/0001-78,Sushi Express Delivery Ltda,Sushi Express,(21) 99876-5432,Rio de Janeiro/RJ,"Combinado 20 peças | sushis e sashimis variados | 69,00 | peixe, soja
+Yakisoba | macarrão, legumes e carne | 39,00 | glúten, soja",Vermelho,Razão social diferente da registrada na Receita,Razão social divergente
+07.924.402/0001-21,Cozinha X Ltda,Cozinha X,(21) 99876-5432,Rio de Janeiro/RJ,"Item 1 | ver foto | 0
+Combo especial | o de sempre, falar com o atendente | a combinar
+Promoção | | ",Vermelho,Cardápio sem informações suficientes (IA com baixa confiança),Cardápio ilegível

@@ -1,0 +1,829 @@
+{
+  "name": "Ativação Restaurante",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Cadastro de restaurante",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "CNPJ",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Razão social",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Nome fantasia",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "E-mail",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Telefone",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Cidade/UF",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Cardápio",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -1392,
+        -272
+      ],
+      "id": "53156ebf-771b-4e0a-b6dc-8c43e4a42402",
+      "name": "On form submission",
+      "webhookId": "997340b9-19fa-493b-bd85-51481938f4f3"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const f = Object.fromEntries(Object.entries($json).map(([k, v]) => [k.trim(), v]));\nconst get = (k) => (f[k] ?? '').toString().trim();\nconst cnpj = get('CNPJ').replace(/\\D/g, '');\nfunction cnpjValido(c) {\n  if (!/^\\d{14}$/.test(c) || /^(\\d)\\1{13}$/.test(c)) return false;\n  const calc = (base, pesos) => {\n    const s = base.split('').reduce((a, d, i) => a + Number(d) * pesos[i], 0);\n    const r = s % 11;\n    return r < 2 ? 0 : 11 - r;\n  };\n  const p1 = [5,4,3,2,9,8,7,6,5,4,3,2];\n  const p2 = [6, ...p1];\n  const d1 = calc(c.slice(0, 12), p1);\n  const d2 = calc(c.slice(0, 12) + d1, p2);\n  return c.endsWith(`${d1}${d2}`);\n}\nconst pendencias = [];\nfor (const k of ['CNPJ','Razão social','Nome fantasia','E-mail','Telefone','Cidade/UF','Cardápio']) {\n  if (!get(k)) pendencias.push(`Campo não preenchido: ${k}`);\n}\nconst cnpjOk = cnpjValido(cnpj);\nif (!cnpjOk) pendencias.push('CNPJ inválido: confira os números digitados');\nconst tel = get('Telefone');\nif (tel && !/^\\(?\\d{2}\\)?\\s?9?\\d{4}-?\\d{4}$/.test(tel)) {\n  pendencias.push('Telefone inválido: use o formato (21) 99999-9999');\n}\nconst fmt = cnpj.length === 14\n  ? `${cnpj.slice(0,2)}.${cnpj.slice(2,5)}.${cnpj.slice(5,8)}/${cnpj.slice(8,12)}-${cnpj.slice(12)}`\n  : get('CNPJ');\nreturn { json: {\n  cnpj, cnpj_formatado: fmt, cnpj_valido: cnpjOk,\n  razao_social: get('Razão social'), nome_fantasia: get('Nome fantasia'),\n  email: get('E-mail'), telefone: tel, cidade_uf: get('Cidade/UF'),\n  cardapio: get('Cardápio').replace(/^\"+|\"+$/g, '').trim(), pendencias_regras: pendencias, envio_id: 'envio-' + (f['Carimbo de data/hora'] || f['submittedAt'] || '')\n}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        -368
+      ],
+      "id": "8462c889-7db9-4d52-b321-35ebc06a6c7f",
+      "name": "Regras de cadastro"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_ID_DA_PLANILHA",
+          "mode": "list",
+          "cachedResultName": "Ativação de Restaurantes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1,
+          "mode": "list",
+          "cachedResultName": "Receita simulada",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit#gid=1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "CNPJ (somente números)",
+              "lookupValue": "={{ $json.cnpj }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1008,
+        -368
+      ],
+      "id": "645bab54-d52b-4226-95d5-17e4f3730898",
+      "name": "Consultar Receita",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const r = $('Regras de cadastro').item.json;\nconst simulada = $('Consultar Receita').item.json;\nconst api = $json;\nconst norm = s => (s || '').toString().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\n// Razão social sem pontuação e sem sufixos societários (LTDA, ME, EPP, EIRELI, S/A)\nconst normRazao = s => norm(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\\b(ltda|me|epp|eireli|s a|sa)\\b/g, ' ').replace(/\\s+/g, ' ').trim();\n\n// 1. Receita em duas camadas: base simulada (testes) e, se o CNPJ não estiver nela, BrasilAPI (CNPJs reais)\nlet receita = null;\nif (simulada['Situação cadastral']) {\n  receita = { situacao: simulada['Situação cadastral'], cnae: String(simulada['CNAE principal'] || ''), descricaoCnae: simulada['Descrição do CNAE'], razao: simulada['Razão social'] };\n} else if (api.razao_social) {\n  receita = { situacao: api.descricao_situacao_cadastral, cnae: String(api.cnae_fiscal || ''), descricaoCnae: api.cnae_fiscal_descricao, razao: api.razao_social };\n}\nconst apiFalhou = !receita && api.error && !JSON.stringify(api.error).includes('404');\n\n// 2. Checagens da Receita\nconst vermelhos = [];\nif (r.cnpj_valido) {\n  if (apiFalhou) {\n    vermelhos.push('Consulta à Receita indisponível: cadastro enviado para revisão humana');\n  } else if (!receita) {\n    vermelhos.push('CNPJ não encontrado na Receita');\n  } else {\n    if (norm(receita.situacao) !== 'ativa') vermelhos.push('CNPJ com situação ' + receita.situacao + ' na Receita');\n    const cnae = receita.cnae.replace(/\\D/g, '');\n    const alimentacao = ['5611','5612','5620','1091','4721'].some(p => cnae.startsWith(p));\n    if (!alimentacao) vermelhos.push('Atividade principal não é de alimentação: ' + receita.descricaoCnae);\n    if (normRazao(receita.razao) !== normRazao(r.razao_social)) vermelhos.push('Razão social diferente da registrada na Receita (' + receita.razao + ')');\n  }\n}\n\n// 3. Semáforo das regras cadastrais\nlet semaforo = 'Verde';\nif (vermelhos.length) semaforo = 'Vermelho';\nelse if (r.pendencias_regras.length) semaforo = 'Amarelo';\nconst motivos = [...vermelhos, ...r.pendencias_regras];\nconst agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\nreturn { json: {\n  'Protocolo': 'ATV-' + r.cnpj,\n  'Recebido em': agora,\n  'Atualizado em': agora,\n  'CNPJ': r.cnpj_formatado,\n  'Razão social': r.razao_social,\n  'Nome fantasia': r.nome_fantasia,\n  'E-mail': r.email,\n  'Telefone': r.telefone,\n  'Cidade/UF': r.cidade_uf,\n  'Cardápio': r.cardapio,\n  'Checagens de regras': motivos.length ? motivos.join('\\n') : 'OK',\n  'Análise da IA': 'pendente',\n  'Confiança da IA': '',\n  'Semáforo': semaforo,\n  'Motivo': motivos[0] || '',\n  'ID do envio': r.envio_id,\n  'Status': { Verde: 'Aprovado', Amarelo: 'Pendência aberta', Vermelho: 'Em revisão' }[semaforo]\n}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        -368
+      ],
+      "id": "48710fc3-c51d-43ec-8c3c-09aa7378ce94",
+      "name": "Semáforo"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_ID_DA_PLANILHA",
+          "mode": "list",
+          "cachedResultName": "Ativação de Restaurantes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Cadastros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "CNPJ"
+          ],
+          "schema": [
+            {
+              "id": "Protocolo",
+              "displayName": "Protocolo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Recebido em",
+              "displayName": "Recebido em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Atualizado em",
+              "displayName": "Atualizado em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CNPJ",
+              "displayName": "CNPJ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Razão social",
+              "displayName": "Razão social",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nome fantasia",
+              "displayName": "Nome fantasia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "E-mail",
+              "displayName": "E-mail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefone",
+              "displayName": "Telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cidade/UF",
+              "displayName": "Cidade/UF",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cardápio",
+              "displayName": "Cardápio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Checagens de regras",
+              "displayName": "Checagens de regras",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Análise da IA",
+              "displayName": "Análise da IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Confiança da IA",
+              "displayName": "Confiança da IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Semáforo",
+              "displayName": "Semáforo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Motivo",
+              "displayName": "Motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Decisão do analista",
+              "displayName": "Decisão do analista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Observação do analista",
+              "displayName": "Observação do analista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        16,
+        -368
+      ],
+      "id": "922320d9-9f11-4b78-8eb7-b01fa34415d9",
+      "name": "Gravar cadastro",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "Gemini 3.1 Flash Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é analista de qualidade de cardápios de uma plataforma de delivery. Analise o cardápio abaixo. Cada linha é um item no formato: nome | descrição | preço | alergênicos.\n\nOs alergênicos e os ingredientes já são verificados por outra etapa. NÃO comente alergênicos nem ingredientes.\n\nProcure APENAS estes tipos de problema e use exatamente estes códigos:\n- preco_incoerente: preço claramente fora da realidade para o item (por exemplo, um lanche completo por poucos reais ou um doce unitário por centenas de reais).\n- item_proibido: produtos de tabaco (cigarro, charuto, vape), medicamentos, armas ou animais vivos. Bebida alcoólica NÃO é proibida.\n- item_fora_do_ramo: produto que não é alimento nem bebida (por exemplo, eletrônicos, roupas, utensílios).\n\nEm \"detalhe\", explique o problema e sugira a correção em uma frase curta, dirigida ao restaurante.\n\nConfiança: \"alta\" se o cardápio está claro; \"media\" se há alguma ambiguidade; \"baixa\" se o cardápio é vago, incompleto ou ilegível a ponto de impedir a análise.\n\nResponda SOMENTE com JSON válido, sem texto antes ou depois, neste formato:\n{\"problemas\":[{\"item\":\"nome do item\",\"tipo\":\"codigo\",\"detalhe\":\"...\"}],\"confianca\":\"alta|media|baixa\"}\n\nCardápio:\n{{ $json['Cardápio'] }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        -368
+      ],
+      "id": "e94fa24a-4b71-4759-935e-238974cd9448",
+      "name": "Analisar cardápio",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 5,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Gemini - Ativação"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base = $('Semáforo').item.json;\nconst respIA = $('Analisar cardápio').item.json;\nconst anterior = $json['CNPJ'] ? $json : null;\nconst norm = s => (s || '').toString().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();\nconst NOMES = {\n  descricao_ausente: 'Descrição ausente',\n  alergenicos_nao_informados: 'Alergênicos não informados',\n  preco_invalido: 'Preço inválido',\n  alergenico_nao_declarado: 'Possível alergênico não declarado',\n  preco_incoerente: 'Preço fora do padrão',\n  item_proibido: 'Item proibido',\n  item_fora_do_ramo: 'Item fora do ramo'\n};\nconst AVISOS = ['alergenico_nao_declarado', 'preco_incoerente'];\nconst ALERGENOS = {\n  'glúten': /\\btrigo\\b|\\bmassas?\\b|\\bpao\\b(?! de queijo)|\\bpaes\\b|\\bempanad[oa]s?\\b|\\bbiscoitos?\\b|\\bgranola\\b|\\btortilha\\b|\\bmacarrao\\b|\\bbrioche\\b/,\n  'lactose': /\\bleite\\b|\\bqueijos?\\b|\\bmanteiga\\b|\\bcreme\\b|\\bcream cheese\\b|\\biogurte\\b|\\bmucarela\\b|\\bmussarela\\b|\\brequeijao\\b|\\bcheddar\\b|\\bmascarpone\\b/,\n  'ovo': /\\bovos?\\b|\\bmerengue\\b/,\n  'peixe': /\\bpeixes?\\b|\\bsalmao\\b|\\batum\\b|\\btilapia\\b|\\bbacalhau\\b/,\n  'crustáceos': /\\bcamar(ao|oes)\\b|\\blagostas?\\b/,\n  'soja': /\\bsoja\\b|\\bshoyu\\b|\\btofu\\b/,\n  'amendoim': /\\bamendoim\\b/,\n  'castanhas': /\\bcastanhas?\\b|\\bnozes\\b/,\n  'gergelim': /\\bgergelim\\b|\\btahine\\b/\n};\n\n// 1. Regras fixas sobre cada linha do cardápio (sem IA)\nconst itens = (base['Cardápio'] || '').split('\\n').map(l => l.trim()).filter(Boolean).map(l => {\n  const [nome = '', descricao = '', preco = '', alergenos = ''] = l.split('|').map(c => c.trim());\n  return { nome, descricao, preco, alergenos };\n});\nconst problemas = [];\nfor (const it of itens) {\n  if (!it.descricao) problemas.push({ item: it.nome, tipo: 'descricao_ausente', detalhe: 'inclua uma descrição com os principais ingredientes.' });\n  if (!it.alergenos) problemas.push({ item: it.nome, tipo: 'alergenicos_nao_informados', detalhe: 'informe os alergênicos do item ou escreva \"nenhum\".' });\n  const valor = Number(it.preco.replace(/[^\\d,]/g, '').replace(',', '.'));\n  if (!valor) problemas.push({ item: it.nome, tipo: 'preco_invalido', detalhe: 'informe um preço válido em reais.' });\n  if (it.alergenos) {\n    const txt = norm(it.nome + ' ' + it.descricao);\n    const declarados = norm(it.alergenos);\n    for (const [alergeno, regex] of Object.entries(ALERGENOS)) {\n      const achado = txt.match(regex);\n      if (achado && !declarados.includes(norm(alergeno).slice(0, 6))) {\n        const palavra = (it.nome + ' ' + it.descricao).toLowerCase().substr(achado.index, achado[0].length);\n        problemas.push({ item: it.nome, tipo: 'alergenico_nao_declarado', detalhe: 'a descrição cita \"' + palavra + '\", que indica ' + alergeno + ', mas ' + alergeno + ' não está entre os alergênicos declarados.' });\n      }\n    }\n  }\n}\n\n// 2. Ler a resposta da IA\nconst partes = respIA.content?.parts || [];\nconst textoIA = (partes.find(p => p.text)?.text || '').replace(/```json|```/g, '').trim();\nlet ia = null;\ntry { ia = JSON.parse(textoIA); } catch (e) { ia = null; }\nconst confianca = ia ? (ia.confianca || 'baixa') : 'baixa';\n\n// 3. Aceitar da IA só os tipos que dependem de interpretação\nconst TIPOS_IA = ['preco_incoerente', 'item_proibido', 'item_fora_do_ramo'];\nlet descartados = 0;\nfor (const p of (ia?.problemas || [])) {\n  if (!TIPOS_IA.includes(p.tipo)) { descartados++; continue; }\n  if (p.tipo === 'preco_incoerente' && problemas.some(q => q.tipo === 'preco_invalido' && norm(q.item) === norm(p.item))) continue;\n  problemas.push(p);\n}\n\n// 4. Reenvio: o restaurante já foi avisado e manteve o cardápio igual?\nconst reenvioSemAlteracao = !!anterior && anterior['Status'] === 'Pendência aberta' && norm(anterior['Cardápio']) === norm(base['Cardápio']) && !!anterior['ID do envio'] && anterior['ID do envio'] !== base['ID do envio'];\nconst avisos = problemas.filter(p => AVISOS.includes(p.tipo));\nconst obrigatorios = problemas.filter(p => !AVISOS.includes(p.tipo) && !['item_proibido', 'item_fora_do_ramo'].includes(p.tipo));\nconst avisosAceitos = reenvioSemAlteracao && avisos.length > 0;\n\n// 5. Decidir o semáforo por regra\nconst tipos = problemas.map(p => p.tipo);\nconst vermelhosIA = [];\nif (!ia) vermelhosIA.push('Falha na análise da IA: cadastro enviado para revisão humana');\nif (tipos.includes('item_proibido')) vermelhosIA.push('Item proibido no cardápio');\nif (tipos.includes('item_fora_do_ramo')) vermelhosIA.push('Item fora do ramo de alimentação no cardápio');\nif (ia && confianca === 'baixa') vermelhosIA.push('Cardápio sem informações suficientes para análise (IA com baixa confiança)');\nlet semaforo = 'Verde';\nif (base['Semáforo'] === 'Vermelho' || vermelhosIA.length) semaforo = 'Vermelho';\nelse if (base['Semáforo'] === 'Amarelo' || obrigatorios.length || (avisos.length && !avisosAceitos)) semaforo = 'Amarelo';\n\nlet status = { Verde: 'Aprovado', Amarelo: 'Pendência aberta', Vermelho: 'Em revisão' }[semaforo];\nif (semaforo === 'Verde' && avisosAceitos) status = 'Aprovado com avisos (restaurante ciente)';\nelse if (semaforo === 'Verde' && anterior && anterior['Status'] === 'Pendência aberta') status = 'Aprovado (pendência resolvida)';\n\nconst linhas = problemas.map(p => `${p.item}: ${NOMES[p.tipo]} – ${p.detalhe}`);\nlet analise = linhas.length ? linhas.join('\\n') : (ia ? 'Nenhum problema encontrado' : 'Falha na análise');\nif (avisosAceitos) analise += '\\n(avisos mantidos pelo restaurante após notificação)';\nif (descartados) analise += `\\n(${descartados} apontamento(s) da IA fora do escopo descartado(s))`;\nconst motivo = avisosAceitos && semaforo === 'Verde'\n  ? `Restaurante manteve o cardápio após aviso: ${[...new Set(avisos.map(p => NOMES[p.tipo]))].join(', ')}`\n  : [base['Semáforo'] === 'Vermelho' ? base['Motivo'] : '', vermelhosIA[0], base['Motivo'], linhas[0]].find(Boolean) || '';\n\nreturn { json: {\n  ...base,\n  'Recebido em': anterior?.['Recebido em'] || base['Recebido em'],\n  'Análise da IA': analise,\n  'Confiança da IA': confianca,\n  'Semáforo': semaforo,\n  'Motivo': motivo,\n  'Status': status,\n  '_mensagem_restaurante': problemas.map(p => `• ${AVISOS.includes(p.tipo) ? 'Aviso – ' : ''}${p.item}: ${p.detalhe}`).join('<br>')\n}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -368
+      ],
+      "id": "536bec0f-70de-4498-bd3c-0a293c91cfbd",
+      "name": "Semáforo final"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Semáforo final').item.json['E-mail'] }}",
+        "subject": "=Ajustes no seu cadastro – {{ $('Semáforo final').item.json['Nome fantasia'] }}",
+        "message": "=<p>Olá, {{ $('Semáforo final').item.json['Nome fantasia'] }}!</p>\n<p>Recebemos o cadastro do seu restaurante (protocolo {{ $('Semáforo final').item.json['Protocolo'] }}) e encontramos alguns pontos para ajustar antes da aprovação.</p>\n{{ $('Semáforo final').item.json['Checagens de regras'] === 'OK' ? '' : '<p><b>Dados do cadastro:</b><br>' + $('Semáforo final').item.json['Checagens de regras'].split('\\n').join('<br>') + '</p>' }}\n<p>{{ $('Semáforo final').item.json['_mensagem_restaurante'] }}</p>\n<p>Para corrigir, é só enviar o formulário de cadastro de novo, com o mesmo CNPJ. Nos itens marcados como <b>Aviso</b>, se a informação estiver correta, reenvie o formulário sem alterações para confirmar. A declaração do cardápio é de responsabilidade do restaurante.</p>\n<p>Equipe de Ativação<br><i>(mensagem de teste de um projeto demonstrativo)</i></p>",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Ativação de Restaurantes"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -368
+      ],
+      "id": "e3a26497-63a0-422f-8c5e-c726477f0b25",
+      "name": "E-mail Amarelo",
+      "webhookId": "ed66c0ca-97ef-444c-81a1-ea2982add60e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Semáforo final').item.json['Semáforo'] }}",
+                    "rightValue": "Verde",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d09dd501-b156-4d51-b62a-0f3387f4c4a7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Verde"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "44289fb7-52ae-4ef0-833a-15e6ed68bdbc",
+                    "leftValue": "={{ $('Semáforo final').item.json['Semáforo'] }}",
+                    "rightValue": "Amarelo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Amarelo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "ae9c16d9-02d5-4b0f-80d3-8e1674446f4c",
+                    "leftValue": "={{ $('Semáforo final').item.json['Semáforo'] }}",
+                    "rightValue": "Vermelho",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Vermelho"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        176,
+        -384
+      ],
+      "id": "1b2d0625-e856-4d17-982f-cb590ad60b13",
+      "name": "Separar por cor"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Semáforo final').item.json['E-mail'] }}",
+        "subject": "=Cadastro aprovado – {{ $('Semáforo final').item.json['Nome fantasia'] }}",
+        "message": "=<p>Olá, {{ $('Semáforo final').item.json['Nome fantasia'] }}!</p>\n<p>Boa notícia: o cadastro do seu restaurante (protocolo {{ $('Semáforo final').item.json['Protocolo'] }}) foi aprovado.</p>\n{{ $('Semáforo final').item.json['Status'].startsWith('Aprovado com avisos') ? '<p>Registramos que você confirmou o cardápio após os avisos abaixo. As informações do cardápio, incluindo a declaração de alergênicos e os preços, são de responsabilidade do restaurante.<br>' + $('Semáforo final').item.json['_mensagem_restaurante'] + '</p>' : '<p>Os dados cadastrais e o cardápio passaram por todas as verificações.</p>' }}\n<p>Em breve você recebe as orientações para começar a vender.</p>\n<p>Equipe de Ativação<br><i>(mensagem de teste de um projeto demonstrativo)</i></p>",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Ativação de Restaurantes"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -512
+      ],
+      "id": "1701266d-b10d-4de2-abf0-6dc8e9a91f46",
+      "name": "E-mail Verde",
+      "webhookId": "373ae5fc-c53b-428f-a81f-2a43e52a8bc5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "time-de-ativacao@exemplo.com",
+        "subject": "=[Revisão] {{ $('Semáforo final').item.json['Nome fantasia'] }} – {{ $('Semáforo final').item.json['Motivo'] }}",
+        "message": "=<p><b>Cadastro aguardando revisão</b></p> <p><b>Protocolo:</b> {{ $('Semáforo final').item.json['Protocolo'] }}<br> <b>Restaurante:</b> {{ $('Semáforo final').item.json['Nome fantasia'] }} ({{ $('Semáforo final').item.json['Razão social'] }})<br> <b>CNPJ:</b> {{ $('Semáforo final').item.json['CNPJ'] }}<br> <b>Cidade/UF:</b> {{ $('Semáforo final').item.json['Cidade/UF'] }}</p> <p><b>Motivo:</b> {{ $('Semáforo final').item.json['Motivo'] }}</p> <p><b>Checagens de regras:</b><br>{{ $('Semáforo final').item.json['Checagens de regras'].split('\\n').join('<br>') }}</p> <p><b>Análise da IA</b> (confiança {{ $('Semáforo final').item.json['Confiança da IA'] }}):<br>{{ $('Semáforo final').item.json['Análise da IA'].split('\\n').join('<br>') }}</p> <p>Registre a decisão na coluna \"Decisão do analista\" da planilha Ativação de Restaurantes.</p> <p><i>O restaurante não foi notificado.</i></p>",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Ativação de Restaurantes"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -224
+      ],
+      "id": "e7df04b1-4569-4c53-a43a-6e2741190cd4",
+      "name": "Alerta Vermelho",
+      "webhookId": "38eaf645-4f28-48d9-acfd-66de1f5d09ff",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_ID_DA_PLANILHA",
+          "mode": "list",
+          "cachedResultName": "Ativação de Restaurantes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Cadastros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "CNPJ",
+              "lookupValue": "={{ $('Semáforo').item.json['CNPJ'] }}"
+            }
+          ]
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -288,
+        -368
+      ],
+      "id": "e2e1364a-0ac4-4da7-9762-b34412ade661",
+      "name": "Buscar cadastro anterior",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://brasilapi.com.br/api/cnpj/v1/{{ $('Regras de cadastro').item.json.cnpj }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -848,
+        -368
+      ],
+      "id": "973c4380-fe74-4c12-b413-d3346855add3",
+      "name": "Consultar BrasilAPI",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_ID_DA_PLANILHA",
+          "mode": "list",
+          "cachedResultName": "Ativação de Restaurantes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1758449015,
+          "mode": "list",
+          "cachedResultName": "Respostas ao formulário 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SEU_ID_DA_PLANILHA/edit#gid=1758449015"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        -464
+      ],
+      "id": "e86b8db2-c1e6-4384-ad2b-659e241fd334",
+      "name": "Nova resposta (Google Forms)",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Regras de cadastro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regras de cadastro": {
+      "main": [
+        [
+          {
+            "node": "Consultar Receita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Receita": {
+      "main": [
+        [
+          {
+            "node": "Consultar BrasilAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semáforo": {
+      "main": [
+        [
+          {
+            "node": "Analisar cardápio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar cardápio": {
+      "main": [
+        [
+          {
+            "node": "Buscar cadastro anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semáforo final": {
+      "main": [
+        [
+          {
+            "node": "Gravar cadastro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar cadastro": {
+      "main": [
+        [
+          {
+            "node": "Separar por cor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar por cor": {
+      "main": [
+        [
+          {
+            "node": "E-mail Verde",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "E-mail Amarelo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alerta Vermelho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar cadastro anterior": {
+      "main": [
+        [
+          {
+            "node": "Semáforo final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar BrasilAPI": {
+      "main": [
+        [
+          {
+            "node": "Semáforo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nova resposta (Google Forms)": {
+      "main": [
+        [
+          {
+            "node": "Regras de cadastro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5fef5a6f-33b4-40fb-a11b-63b1cf4265e3",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "M6tV2qwF4Pi3MDYy",
+  "tags": []
+}
